@@ -1,0 +1,11 @@
+{
+  "bindings": [
+    {
+      "name": "tweetScheduleTimer",
+      "type": "timerTrigger",
+      "direction": "in",
+      "schedule": "0 */23 * * * *"
+    }
+  ],
+  "scriptFile": "../dist/PostTweet/index.js"
+}
