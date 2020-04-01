@@ -15,21 +15,24 @@ const queueServiceClient = new QueueServiceClient(
 );
 
 export default class TweetHelper {
-  private _twitterAPI: Twit = new Twit({
-    consumer_key: process.env.ACCOUNT_KEY || "",
-    consumer_secret: process.env.TWITTER_CONSUMER_SECRET || "",
-    access_token: process.env.TWITTER_ACCESS_TOKEN || "",
-    access_token_secret: process.env.TWITTER_ACCESS_TOKEN_SECRET || "",
-    timeout_ms: 60 * 1000, // optional HTTP request timeout to apply to all requests.
-    strictSSL: true // optional - requires SSL certificates to be valid.
-  });
-
   private _queueName: string;
   private _queueClient: QueueClient;
+  _config: { twitter: Twit.Options; queueName: string };
 
-  constructor(queueName: string) {
-    this._queueName = queueName;
-    this._queueClient = queueServiceClient.getQueueClient(this._queueName);
+  constructor(
+    queueName: string,
+    twitConfig: Twit.Options = {
+      consumer_key: "",
+      consumer_secret: "",
+      access_token: "",
+      access_token_secret: "",
+      strictSSL: true
+    }
+  ) {
+    this._config = { twitter: twitConfig, queueName };
+    this._queueClient = queueServiceClient.getQueueClient(
+      this._config.queueName
+    );
   }
 
   public async getTweet(): Promise<DequeuedMessageItem> {
@@ -45,7 +48,7 @@ export default class TweetHelper {
     const status = new Buffer(tweet.messageText, "base64").toString("utf-8");
     console.log(`Trying to post tweet "${status}".`);
 
-    await this._twitterAPI
+    await new Twit(this._config.twitter)
       .post("statuses/update", { status })
       .then(async response => {
         console.log(
@@ -57,5 +60,9 @@ export default class TweetHelper {
         );
       })
       .catch(error => console.error(error));
+  }
+
+  public async deleteMessage(tweet: DequeuedMessageItem): Promise<void> {
+    await this._queueClient.deleteMessage(tweet.messageId, tweet.popReceipt);
   }
 }
